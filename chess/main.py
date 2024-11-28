@@ -158,6 +158,48 @@ Rules = {
     6: pawnRules
 }
 
+Price = {
+    0: 0,
+    1: 50,
+    2: 9,
+    3: 5,
+    4: 3,
+    5: 3,
+    6: 1
+}
+
+
+def balance():
+    res = 0
+    for y in range(len(place)):
+        for x in range(len(place[y])):
+            res += Price[place[y][x][0]] * (1 - 2 * (place[y][x][1] == 2))
+    return res
+
+
+def Bot(depth):
+    if depth == 5:
+        return balance()
+    g = [[*place[y][x], 7 - y, x] for y in range(len(place)) for x in range(len(place[y])) if place[y][x] != (0, 0)]
+    best_res = 100 if depth % 2 == 1 else -100
+    deal = ()
+    for figure in g:
+        if figure[1] == 1 + depth % 2:
+            for y in range(len(place)):
+                for x in range(len(place[y])):
+                    WasFig = place[7 - y][x]
+                    if Rules[figure[0]](figure[3], figure[2], x, y, 1 + depth % 2):
+                        curRes = Bot(depth + 1)
+                        if (depth % 2 == 1 and best_res > curRes) or (depth % 2 == 0 and best_res < curRes):
+                            best_res = curRes
+                            deal = (figure[3], figure[2], x, y)
+                        move(x, y, figure[3], figure[2])
+                        place[7 - y][x] = WasFig
+    if depth == 1 and deal:
+        move(*deal)
+        history.append(f"{chr(ord('a') + deal[0])}{deal[1] + 1} - {chr(ord('a') + deal[2])}{deal[3] + 1}")
+    return best_res
+
 
 def uchr(code: str):
     return chr(int(code.lstrip("U+").zfill(8), 16))
@@ -181,17 +223,19 @@ def draw():
                 print(f" {Symbols[fig[1]][fig[0]]} |", end='')
             print()
     print("    A   B   C   D   E   F   G   H")
-
-
-history = []
-
-while 1:
-    draw()
     for moment in range(len(history)):
         print(history[moment], end='\t\t')
         if moment % 10 == 9:
             print()
     print()
+
+
+history = []
+
+mode = input("Choise mod: 1 - two player; 2 - with bot\n>>> ")
+
+while 1:
+    draw()
     try:
         x1, y1 = input(("White" if CurPlayer == 1 else "Black") + " to move. Select a figure: ")
         if x1 == '0' and y1 == '0':
@@ -204,8 +248,27 @@ while 1:
             x2 = ord(x2) - ord('a')
             if 0 <= x2 <= 7 >= y2 >= 0:
                 if Rules[place[7 - y1][x1][0]](x1, y1, x2, y2, CurPlayer):
-                    CurPlayer = CurPlayer % 2 + 1
+                    if mode == '1':
+                        CurPlayer = CurPlayer % 2 + 1
                     history.append(f"{chr(ord('a') + x1)}{y1 + 1} - {chr(ord('a') + x2)}{y2 + 1}")
+                    count = 0
+                    for line in place:
+                        for figure in line:
+                            if figure[0] == 1:
+                                count += 1
+                    if count != 2:
+                        break
+                    if mode == '2':
+                        draw()
+                        print("wait for bot")
+                        Bot(1)
+                        count = 0
+                        for line in place:
+                            for figure in line:
+                                if figure[0] == 1:
+                                    count += 1
+                        if count != 2:
+                            break
                 else:
                     input("something went wrong, try again")
             else:
@@ -216,5 +279,4 @@ while 1:
         input("wrong data 3")
 
 draw()
-
-
+print("Game over")
